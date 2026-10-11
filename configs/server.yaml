@@ -1,0 +1,51 @@
+# 路径相对本配置文件；复制到服务器后修改这些路径即可。
+audio_root: ../MuChin/muchin-audio
+train_manifest: ../data/manifests_full/train.jsonl
+val_manifest: ../data/manifests_full/val.jsonl
+output_dir: ../outputs/muchin_joint
+audio:
+  sample_rate: 24000
+  segment_seconds: 8.0
+  segments: 3
+  n_fft: 1024
+  hop_length: 256
+  n_mels: 80
+  channels: [32, 64, 128]
+  hidden_size: 384
+  heads: 6
+  layers: 4
+  tokens_per_segment: 16
+  dropout: 0.1
+  trainable: true
+  init_checkpoint: ""  # 为空时 CNN/Transformer 从头训练，不能称为预训练音频模型。
+language:
+  model_path: ../Qwen3-4B-Base
+  mode: lora          # frozen / lora / full；full 可全参数微调 Qwen。
+  tiny: false
+  lora_rank: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  gradient_checkpointing: true
+  question_tokens: 160
+  answer_tokens: 192
+  retrieval_text_tokens: 192
+training:
+  seed: 42
+  epochs: 10
+  batch_size: 4       # 每个 GPU 的真实微批，决定本实现的对比学习负样本池。
+  eval_batch_size: 4
+  accumulation_steps: 4
+  num_workers: 4
+  mixed_precision: bf16
+  learning_rate: 0.0002
+  audio_learning_rate: 0.0001
+  language_learning_rate: 0.00002
+  weight_decay: 0.01
+  warmup_ratio: 0.05
+  grad_clip: 1.0
+  retrieval_weight: 0.1  # 设为 0 做纯问答训练；之后不得把随机投影头用于向量召回。
+  retrieval_dim: 256
+  temperature: 0.07
+  one_question_per_song: true
+  log_every_updates: 10
+  diagnostics_every_updates: 1 # 记录真实梯度及参数差；有额外取样开销，0 关闭。

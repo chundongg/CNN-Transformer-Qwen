@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>音乐训练观察台</title><link rel="stylesheet" href="/style.css"></head>
+<body>
+<div class="app">
+  <header><div class="brand"><span class="mark">♫</span><div><span class="eyebrow">MUSIC MODEL LAB</span><h1>音乐训练观察台</h1></div></div><div class="connection"><span id="connectionDot" class="dot"></span><span id="connectionText">连接中</span><button id="refresh" class="quiet">刷新</button></div></header>
+  <div class="topline"><span id="runName">等待实验日志</span><div class="auth"><label for="token">访问令牌</label><input id="token" type="password" placeholder="未设置鉴权时留空" autocomplete="off"><button id="connect" class="quiet">连接</button></div></div>
+  <nav aria-label="页面切换"><button class="tab active" data-tab="monitor">训练监控</button><button class="tab" data-tab="inspect">音乐检查</button></nav>
+  <div id="error" class="notice error" role="alert" hidden></div>
+  <main>
+  <section id="monitorPanel">
+    <div class="section-title"><div><h2>模型正在怎样学习</h2><p>每 3 秒读取训练日志。问答损失与音频模块的实际更新分别展示。</p></div><span id="tinyBadge" class="badge" hidden>合成数据 / tiny 自检</span></div>
+    <div class="stats"><article><span>训练阶段</span><strong id="phase">等待日志</strong><small id="heartbeat">尚未收到状态记录</small></article><article><span>训练轮次</span><strong id="epoch">—</strong><small id="batch">—</small></article><article><span>优化器更新</span><strong id="step">—</strong><small id="planned">—</small></article><article><span>最新验证问答损失</span><strong id="valLoss">—</strong><small id="valEpoch">等待完整验证</small></article></div>
+    <div class="chart-grid">
+      <article class="card"><div class="card-title"><h3>问答损失</h3><span>按完整训练轮次</span></div><canvas id="qaChart" aria-label="训练和验证问答损失曲线"></canvas><div class="legend"><i class="blue"></i>训练<i class="orange"></i>验证</div></article>
+      <article class="card"><div class="card-title"><h3>训练目标</h3><span>按日志窗口</span></div><canvas id="lossChart" aria-label="总损失和检索损失曲线"></canvas><div class="legend"><i class="blue"></i>总损失<i class="orange"></i>检索损失</div></article>
+      <article class="card"><div class="card-title"><h3>音频模块梯度</h3><span>裁剪前 · 对数刻度</span></div><canvas id="gradChart" aria-label="CNN和Transformer梯度曲线"></canvas><div class="legend"><i class="blue"></i>CNN<i class="orange"></i>Transformer</div></article>
+      <article class="card"><div class="card-title"><h3>实际相对参数更新</h3><span>Δ参数 / 更新前参数 · 对数刻度</span></div><canvas id="updateChart" aria-label="CNN和Transformer参数更新曲线"></canvas><div class="legend"><i class="blue"></i>CNN<i class="orange"></i>Transformer</div></article>
+    </div>
+    <article class="card diagnostic"><div class="card-title"><h3>最近一次模块诊断</h3><span id="diagStep">尚无记录</span></div><div class="table-scroll"><table><thead><tr><th>模块</th><th>裁剪前梯度 L2</th><th>裁剪后梯度 L2</th><th>参数变化 L2</th><th>相对变化</th><th>梯度覆盖率</th><th>状态</th></tr></thead><tbody id="diagnostics"><tr><td colspan="7">需要使用带诊断功能的新训练日志；旧检查点仍可用于音乐检查。</td></tr></tbody></table></div><p class="hint">更新量来自优化器执行前后的权重差，包含 AdamW 权重衰减。梯度非零只说明参与训练，音乐理解能力仍需留出集评估。对数曲线只绘制正数，精确的 0 与异常值在表格中查看。</p></article>
+    <p id="historyNote" class="hint">训练进程被强制结束时，最后的状态可能保留；请结合更新时间判断。</p>
+  </section>
+  <section id="inspectPanel" hidden>
+    <div class="section-title"><div><h2>听一首歌，检查模型的回答</h2><p>选择完整检查点与测试歌曲，查看中间特征、人工参考和最终生成文字。</p></div></div>
+    <div class="notice">训练监控不加载模型。点击“加载检查点”才会额外分配模型内存；同卡训练期间建议只看监控，或在另一设备上检查。</div>
+    <div class="checkpoint-bar"><label for="checkpoint">模型检查点</label><select id="checkpoint"><option value="">尚无完整检查点</option></select><button id="loadModel">加载检查点</button><span id="modelStatus" class="hint">尚未加载</span></div>
+    <div class="workspace">
+      <aside class="card song-card"><h3>测试集音乐</h3><label class="sr-only" for="songSearch">搜索歌曲</label><input id="songSearch" placeholder="搜索歌曲 ID 或文件名"><p id="songCount" class="hint">尚未读取测试清单</p><div id="songList" class="song-list"></div><button id="moreSongs" class="quiet" hidden>加载更多</button><p id="splitCheck" class="hint"></p></aside>
+      <div class="detail">
+        <article class="card"><div class="card-title"><h3 id="songTitle">选择一首测试歌曲</h3><span id="conditionBadge" class="badge" hidden></span></div><audio id="audio" controls preload="metadata"></audio><label for="question">你想了解什么？</label><textarea id="question" rows="3" maxlength="1000">请描述这首音乐的人声、配器、节奏和整体氛围。</textarea><div class="controls"><label for="condition">输入条件</label><select id="condition"><option value="original">原始音频</option><option value="silence">静音对照（保留长度）</option></select><label for="tokens">最多生成 token</label><input id="tokens" type="number" min="1" max="512" value="128"><button id="inspectButton" disabled>生成回答并检查</button></div><p class="hint">参考答案仅在页面展示，不会放入模型提示词。切换歌曲并保持同一问题，可进行错配对照。</p></article>
+        <article class="card answer-card"><div class="card-title"><h3>联合模型的最终回答</h3><span id="resultMeta"></span></div><p id="answer" class="answer empty">加载检查点并选择歌曲后，回答会显示在这里。</p><div class="result-actions"><button id="downloadJson" class="quiet" disabled>下载本次结果 JSON</button><button id="downloadFeatures" class="quiet" disabled>下载完整特征 NPZ</button></div></article>
+        <article class="card"><details><summary>人工参考问答 <span class="hint">用于比较，不作为模型输入</span></summary><div id="references" class="references">选择歌曲后查看。</div></details></article>
+      </div>
+    </div>
+    <div id="featureSection" hidden><div class="section-title"><div><h2>这次回答使用的音频表示</h2><p>热力图显示真实隐藏层数值，横轴为选取的特征维度，纵轴为 token。特征维度没有固定的中文含义。</p></div></div><div class="chart-grid features">
+      <article class="card"><div class="card-title"><h3>CNN 输出 · 池化后</h3><span id="cnnShape"></span></div><canvas id="cnnHeatmap" class="heatmap" aria-label="CNN隐藏特征热力图"></canvas><p id="cnnStats" class="hint"></p><details><summary>查看原始数值片段</summary><pre id="cnnPreview"></pre></details></article>
+      <article class="card"><div class="card-title"><h3>Transformer 输出</h3><span id="transformerShape"></span></div><canvas id="transformerHeatmap" class="heatmap" aria-label="Transformer隐藏特征热力图"></canvas><p id="transformerStats" class="hint"></p><details><summary>查看原始数值片段</summary><pre id="transformerPreview"></pre></details></article>
+    </div><p id="maskNote" class="hint"></p><p class="hint">热力图最多展示 128 行 × 64 列，色阶在各自张量内归一化。NPZ 保留完整 CNN 卷积输出、池化输出、Transformer 输出及有效掩码；两个图的颜色不能直接比较幅度。</p></div>
+  </section>
+  </main>
+  <footer>本地音频研究工具 · 日志只读 · 模型结果需要验证</footer>
+</div><script src="/app.js" defer></script></body></html>
